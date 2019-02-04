@@ -13,5 +13,5 @@ cd /home/rpizarro/histo/src
 python ribbon.train_unet.model.py 107_drop 100
 
 cd /home/rpizarro/histo/src/HELIOS
-msub ribbon.HELIOS.v107_drop.sh
+# msub ribbon.HELIOS.v107_drop.sh
 

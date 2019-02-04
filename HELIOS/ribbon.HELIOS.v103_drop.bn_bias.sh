@@ -13,5 +13,5 @@ cd /home/rpizarro/histo/src
 python ribbon.train_unet.bn_bias.py 103_drop bn_bias 100
 
 cd /home/rpizarro/histo/src/HELIOS
-msub ribbon.HELIOS.v103_drop.bn_bias.sh
+# msub ribbon.HELIOS.v103_drop.bn_bias.sh
 
