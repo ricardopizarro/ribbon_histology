@@ -13,5 +13,5 @@ cd /home/rpizarro/histo/src
 python ribbon.train_unet.noflip_bn_bias.py 107 bn_bias 100
 
 cd /home/rpizarro/histo/src/HELIOS
-msub ribbon.HELIOS.v107.noflip_bn_bias.sh
+# msub ribbon.HELIOS.v107.noflip_bn_bias.sh
 

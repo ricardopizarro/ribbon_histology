@@ -1,9 +1,40 @@
+import numpy as np
+import tensorflow as tf
+import random as rn
+
+# The below is necessary for starting Numpy generated random numbers
+# in a well-defined initial state.
+
+np.random.seed(42)
+
+# The below is necessary for starting core Python generated random numbers
+# in a well-defined state.
+
+rn.seed(12345)
+
+# Force TensorFlow to use single thread.
+# Multiple threads are a potential source of non-reproducible results.
+# For further details, see: https://stackoverflow.com/questions/42022950/
+
+session_conf = tf.ConfigProto(intra_op_parallelism_threads=1,inter_op_parallelism_threads=1)
+
+from keras import backend as K
+
+# The below tf.set_random_seed() will make random number generation
+# in the TensorFlow backend have a well-defined initial state.
+# For further details, see:
+# https://www.tensorflow.org/api_docs/python/tf/set_random_seed
+
+tf.set_random_seed(1234)
+
+sess = tf.Session(graph=tf.get_default_graph(), config=session_conf)
+K.set_session(sess)
+
+
 import pandas as pd
 import nibabel as nib
-import numpy as np
 import glob
 import json
-import random
 import os
 import sys
 from scipy import stats
@@ -11,7 +42,6 @@ from numpy import copy
 
 from keras.losses import categorical_crossentropy
 from keras.models import model_from_json, load_model
-from keras import backend as K
 from keras.callbacks import ModelCheckpoint, History
 from keras.optimizers import Adam
 from keras.utils import np_utils
@@ -205,7 +235,7 @@ def runNN(train_df,valid_df,model_version,epochs_per_set):
     # epochs_per_set=10
     steps_per_epoch=50
 
-    weights_dir = os.path.dirname("/home/rpizarro/histo/weights/model/ep{0:03d}/v{1}/".format(epochs_per_set,model_version))
+    weights_dir = os.path.dirname("/home/rpizarro/histo/weights/repro/v{1}/".format(epochs_per_set,model_version))
     set_nb,epochs_running=get_set_nb(weights_dir,epochs_per_set)
     print('This is set {} : epochs previously completed {} : epochs in this set {}'.format(set_nb,epochs_running,epochs_per_set))
 

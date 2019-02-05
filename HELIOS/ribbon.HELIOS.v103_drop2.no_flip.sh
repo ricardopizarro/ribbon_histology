@@ -13,5 +13,5 @@ cd /home/rpizarro/histo/src
 python ribbon.train_unet.no_flip.py 103_drop2 100
 
 cd /home/rpizarro/histo/src/HELIOS
-msub ribbon.HELIOS.v103_drop2.no_flip.sh
+# msub ribbon.HELIOS.v103_drop2.no_flip.sh
 
