@@ -16,7 +16,7 @@ rn.seed(12345)
 # Multiple threads are a potential source of non-reproducible results.
 # For further details, see: https://stackoverflow.com/questions/42022950/
 
-session_conf = tf.ConfigProto(intra_op_parallelism_threads=1,inter_op_parallelism_threads=1)
+# session_conf = tf.ConfigProto(intra_op_parallelism_threads=1,inter_op_parallelism_threads=1)
 
 from keras import backend as K
 
@@ -27,7 +27,7 @@ from keras import backend as K
 
 tf.set_random_seed(1234)
 
-sess = tf.Session(graph=tf.get_default_graph(), config=session_conf)
+sess = tf.Session(graph=tf.get_default_graph())# , config=session_conf)
 K.set_session(sess)
 
 
@@ -235,7 +235,7 @@ def runNN(train_df,valid_df,model_version,epochs_per_set):
     # epochs_per_set=10
     steps_per_epoch=50
 
-    weights_dir = os.path.dirname("/home/rpizarro/histo/weights/repro/v{1}/".format(epochs_per_set,model_version))
+    weights_dir = os.path.dirname("/home/rpizarro/histo/weights/repro/v{1}_gpu/".format(epochs_per_set,model_version))
     set_nb,epochs_running=get_set_nb(weights_dir,epochs_per_set)
     print('This is set {} : epochs previously completed {} : epochs in this set {}'.format(set_nb,epochs_running,epochs_per_set))
 
