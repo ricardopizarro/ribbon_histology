@@ -1,9 +1,40 @@
+import numpy as np
+import tensorflow as tf
+import random as rn
+
+# The below is necessary for starting Numpy generated random numbers
+# in a well-defined initial state.
+
+np.random.seed(42)
+
+# The below is necessary for starting core Python generated random numbers
+# in a well-defined state.
+
+rn.seed(12345)
+
+# Force TensorFlow to use single thread.
+# Multiple threads are a potential source of non-reproducible results.
+# For further details, see: https://stackoverflow.com/questions/42022950/
+
+# session_conf = tf.ConfigProto(intra_op_parallelism_threads=1,inter_op_parallelism_threads=1)
+
+from keras import backend as K
+
+# The below tf.set_random_seed() will make random number generation
+# in the TensorFlow backend have a well-defined initial state.
+# For further details, see:
+# https://www.tensorflow.org/api_docs/python/tf/set_random_seed
+
+tf.set_random_seed(1234)
+
+sess = tf.Session(graph=tf.get_default_graph())# , config=session_conf)
+K.set_session(sess)
+
+
 import pandas as pd
 import nibabel as nib
-import numpy as np
 import glob
 import json
-import random
 import os
 import sys
 from scipy import stats
@@ -11,7 +42,6 @@ from numpy import copy
 
 from keras.losses import categorical_crossentropy
 from keras.models import model_from_json, load_model
-from keras import backend as K
 from keras.callbacks import ModelCheckpoint, History
 from keras.optimizers import Adam
 from keras.utils import np_utils
@@ -156,9 +186,10 @@ def get_set_nb(path,epochs_per_set):
 
 
 
-def get_new_model(verbose=False):
+def get_new_model(model_version,verbose=False):
     # dimension 2560x2560
-    fn = "../model/NN_brown_unet_d2560_c5p2.n2soft.model.json"
+    fn = "/home/rpizarro/histo/model/model.unet.v{}.json".format(model_version)
+    print('Loading model with architecture from : {}'.format(fn))
     with open(fn) as json_data:
         d = json.load(json_data)
     model = model_from_json(d)
@@ -168,7 +199,7 @@ def get_new_model(verbose=False):
         print(model.summary())
     return model
 
-def get_model(path,verbose=False):
+def get_model(path,model_version,verbose=False):
     list_of_files = glob.glob(os.path.join(path,'model*FINAL.h5'))
     if list_of_files:
         # print(list_of_files)
@@ -179,26 +210,40 @@ def get_model(path,verbose=False):
             print(model.summary())
     else:
         print('We did not find any models.  Getting a new one!')
-        model = get_new_model(verbose=verbose)     
+        model = get_new_model(model_version,verbose=verbose)     
     return model
 
-def runNN(train_df,valid_df,epochs_per_set):
-    input_size=(2560,2560,1)
-    output_size=(2560,2560,2)
+
+def get_input_output_size(model_version=101):
+    if '105' in model_version:
+        input_size=(2430,2430,1)
+        output_size=(2430,2430,2)
+    elif '107' in model_version:
+        input_size=(2500,2500,1)
+        output_size=(2500,2500,2)
+    else:
+        input_size=(2560,2560,1)
+        output_size=(2560,2560,2)
+    return input_size,output_size
+
+def runNN(train_df,valid_df,model_version,epochs_per_set):
+
+    input_size,output_size = get_input_output_size(model_version)
+
     # number of tiles per step
     nb_step=1 #20
-    # epochs_per_set=500
+    # epochs_per_set=10
     steps_per_epoch=50
 
-    weights_dir = os.path.dirname("../weights/state/ep{0:03d}/model/".format(int(epochs_per_set)))
+    weights_dir = os.path.dirname("/home/rpizarro/histo/weights/NN_arch/v{1}/".format(epochs_per_set,model_version))
     set_nb,epochs_running=get_set_nb(weights_dir,epochs_per_set)
     print('This is set {} : epochs previously completed {} : epochs in this set {}'.format(set_nb,epochs_running,epochs_per_set))
 
-    model = get_model(weights_dir,verbose=True)
+    model = get_model(weights_dir,model_version,verbose=True)
 
     # track performance (dice coefficient loss) on train and validation datasets
     performance = History()
-    set_path=os.path.join(weights_dir,'set{0:03d}'.format(set_nb),'model'+'.set{0:03d}.'.format(set_nb)+'{epoch:04d}.valJacIdx{val_jaccard_index:0.3f}.h5')
+    set_path=os.path.join(weights_dir,'set{0:03d}'.format(set_nb),'model.v{0}.set{1:03d}.'.format(model_version,set_nb)+'{epoch:04d}.valJacIdx{val_jaccard_index:0.3f}.h5')
     checkpointer=ModelCheckpoint(set_path, monitor='val_loss', verbose=0, save_best_only=False, mode='min', period=1)
 
     # fit the model using the data generator defined below
@@ -206,7 +251,7 @@ def runNN(train_df,valid_df,epochs_per_set):
             validation_data=fileGenerator(valid_df,nb_step=1,verbose=False,input_size=input_size,output_size=output_size),validation_steps=1,callbacks=[performance,checkpointer])
 
     # save the weights at the end of epochs
-    model_FINAL_fn = os.path.join(weights_dir,'model.set{0:03d}.epochs{1:04d}.FINAL.h5'.format(set_nb,epochs_running+epochs_per_set))
+    model_FINAL_fn = os.path.join(weights_dir,'model.v{0}.set{1:03d}.epochs{2:04d}.FINAL.h5'.format(model_version,set_nb,epochs_running+epochs_per_set))
     model.save(model_FINAL_fn,overwrite=True)
     # save the performance (accuracy and loss) history
     save_history(weights_dir,performance,set_nb)
@@ -244,8 +289,9 @@ def fileGenerator(df,nb_step=1,verbose=True,input_size=(2560,2560,1),output_size
             continue
 
 
-# input to : python ribbon.train_unet.py 10
-epochs_per_set = int(sys.argv[1])
+# input to : python ribbon.train_unet.model.py 101(_drop) 10(100)
+model_version = sys.argv[1]
+epochs_per_set = int(sys.argv[2])
 
 # Book keeping
 print("Executing:",__file__)
@@ -258,6 +304,6 @@ train_df = pd.read_csv(train_fn)
 valid_fn = os.path.join(csv_dir,'valid.csv')
 valid_df = pd.read_csv(valid_fn)
 
-runNN(train_df,valid_df,epochs_per_set)
+runNN(train_df,valid_df,model_version,epochs_per_set)
 
 
