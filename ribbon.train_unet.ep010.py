@@ -235,7 +235,7 @@ def runNN(train_df,valid_df,model_version,epochs_per_set):
     # epochs_per_set=10
     steps_per_epoch=50
 
-    weights_dir = os.path.dirname("/home/rpizarro/histo/weights/repro/v{1}/".format(epochs_per_set,model_version))
+    weights_dir = os.path.dirname("/home/rpizarro/histo/weights/repro/v{1}_ep010/".format(epochs_per_set,model_version))
     set_nb,epochs_running=get_set_nb(weights_dir,epochs_per_set)
     print('This is set {} : epochs previously completed {} : epochs in this set {}'.format(set_nb,epochs_running,epochs_per_set))
 
