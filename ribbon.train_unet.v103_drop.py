@@ -121,7 +121,7 @@ def gen_tiles_random(img_fn,segment_fn,nb_tiles=1,tile_width=2560,verbose=False)
     data=normalize(data)
 
     coord_x=get_coord_random(shape[0],tile_width,nb_tiles)
-    coord_y=get_coord_random(shape[1],tile_width,nb_tiles)
+    coord_y=get_coord_random(shape[1],tile_width,nb_tiles)    
     if verbose:
         print('{} : {} : ({},{})'.format(img_fn,segment_fn,coord_x[0],coord_y[0]))
     tiles = np.zeros([nb_tiles]+[tile_width]*2+[1])

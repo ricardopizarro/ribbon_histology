@@ -102,7 +102,7 @@ def flip_img(tile,seg):
     return tile[::f1,::f2],seg[::f1,::f2]
 
 
-def gen_tiles_random(img_fn,segment_fn,nb_tiles=1,tile_width=2560,verbose=False):
+def gen_tiles_random(img_fn,segment_fn,nb_tiles=1,tile_width=2560):
     data = nib.load(img_fn).get_data()
     white= int(stats.mode(data, axis=None)[0])
     shape = data.shape
@@ -122,8 +122,6 @@ def gen_tiles_random(img_fn,segment_fn,nb_tiles=1,tile_width=2560,verbose=False)
 
     coord_x=get_coord_random(shape[0],tile_width,nb_tiles)
     coord_y=get_coord_random(shape[1],tile_width,nb_tiles)
-    if verbose:
-        print('{} : {} : ({},{})'.format(img_fn,segment_fn,coord_x[0],coord_y[0]))
     tiles = np.zeros([nb_tiles]+[tile_width]*2+[1])
     # (1,2560,2560)
     seg = np.zeros([nb_tiles]+[tile_width]*2)
@@ -249,7 +247,7 @@ def runNN(train_df,valid_df,model_version,epochs_per_set):
     checkpointer=ModelCheckpoint(set_path, monitor='val_loss', verbose=0, save_best_only=False, mode='min', period=1)
 
     # fit the model using the data generator defined below
-    model.fit_generator(fileGenerator(train_df,nb_step=nb_step,verbose=False,input_size=input_size,output_size=output_size), steps_per_epoch=steps_per_epoch, epochs=epochs_per_set, verbose=1,
+    model.fit_generator(fileGenerator(train_df,nb_step=nb_step,verbose=True,input_size=input_size,output_size=output_size), steps_per_epoch=steps_per_epoch, epochs=epochs_per_set, verbose=1,
             validation_data=fileGenerator(valid_df,nb_step=1,verbose=True,input_size=input_size,output_size=output_size),validation_steps=1,callbacks=[performance,checkpointer])
 
     # save the weights at the end of epochs
@@ -274,7 +272,7 @@ def fileGenerator(df,nb_step=1,verbose=True,input_size=(2560,2560,1),output_size
                 if verbose:
                     print("{} : {}".format(slice_fn,segment_fn))
                 tile_width = input_size[0]
-                tiles,seg = gen_tiles_random(slice_fn,segment_fn,nb_step,tile_width,verbose=verbose)
+                tiles,seg = gen_tiles_random(slice_fn,segment_fn,nb_step,tile_width)
                 nb_slices = tiles.shape[0]
                 seg = np.reshape(np_utils.to_categorical(seg,output_size[-1]),output_size)
                 seg = seg.reshape((nb_slices,)+output_size)
