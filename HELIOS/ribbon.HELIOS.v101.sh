@@ -10,8 +10,8 @@
 source /home/rpizarro/.deep_env
 
 cd /home/rpizarro/histo/src
-python ribbon.train_unet.v101.py 101 100
+python ribbon.train_unet.py 101 100
 
 cd /home/rpizarro/histo/src/HELIOS
-msub ribbon.HELIOS.v101.sh
+# msub ribbon.HELIOS.v101.sh
 

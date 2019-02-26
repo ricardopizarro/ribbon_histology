@@ -13,5 +13,5 @@ cd /home/rpizarro/histo/src
 python ribbon.train_unet.py 103 100
 
 cd /home/rpizarro/histo/src/HELIOS
-msub ribbon.HELIOS.v103.sh
+# msub ribbon.HELIOS.v103.sh
 
