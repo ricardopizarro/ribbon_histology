@@ -270,7 +270,7 @@ def get_weight(path):
 
 def get_model(path,verbose=False):
     print(path)
-    list_of_files = glob.glob(os.path.join(path,'model.*FINAL.h5'))
+    list_of_files = glob.glob(os.path.join(path,'model.*epochs10000.FINAL.h5'))
     if list_of_files:
         # print(list_of_files)
         model_fn = max(list_of_files, key=os.path.getctime)
