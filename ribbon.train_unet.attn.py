@@ -41,7 +41,7 @@ from scipy import stats
 from numpy import copy
 import difflib
 
-from keras.losses import categorical_crossentropy
+from keras.losses import categorical_crossentropy 
 from keras.models import model_from_json, load_model
 from keras.callbacks import ModelCheckpoint, History
 from keras.optimizers import Adam
@@ -98,7 +98,7 @@ def rgb_2_lum(img):
     img=0.2126*img[:,:,0]+0.7152*img[:,:,1]+0.0722*img[:,:,2]
     return img
 
-def flip_img(tile,seg):
+def flip_img(tile,seg,att):
     # we only flip along horizontal, located on second axis
     # tile is (2560,2560)
     # seg is (2560,2560)
@@ -158,9 +158,10 @@ def weighted_categorical_crossentropy_fcn_loss(y_true, y_pred):
     return K.mean( cce * y_true[...,2] )
 
 
-def jaccard_index(y_true, y_pred, smooth=1.):
-    y_true_f = K.flatten(y_true)
-    y_pred_f = K.flatten(y_pred)
+def jaccard_index_attn(y_true, y_pred, smooth=1.):
+    # We've modified jaccard since we have weighted_categorical_crossentropy_fcn_loss
+    y_true_f = K.flatten(y_true[...,:2])
+    y_pred_f = K.flatten(y_pred[...,:2])
     intersection = K.sum(y_true_f * y_pred_f)
     return (1. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) - intersection + smooth)
 
@@ -210,7 +211,6 @@ def get_new_model(model_version,verbose=False):
     with open(fn) as json_data:
         d = json.load(json_data)
     model = model_from_json(d)
-    # model.compile(optimizer=Adam(lr=1e-5), loss=weighted_categorical_crossentropy_fcn_loss, sample_weight_mode="temporal", metrics=[jaccard_index])
     model.compile(optimizer=Adam(lr=1e-5), loss='categorical_crossentropy', metrics=[jaccard_index])
     if verbose:
         print(model.summary())
@@ -223,12 +223,13 @@ def get_model(path,model_version,verbose=False):
         model_fn = max(list_of_files, key=os.path.getctime)
         print('Loading model : {}'.format(model_fn))
         model = load_model(model_fn)
-        model.compile(optimizer=Adam(lr=1e-5), loss=weighted_categorical_crossentropy_fcn_loss, sample_weight_mode="temporal", metrics=[jaccard_index])
+        model.compile(optimizer=Adam(lr=1e-5), loss=weighted_categorical_crossentropy_fcn_loss, metrics=[jaccard_index_attn])
         if verbose:
             print(model.summary())
     else:
         print('We did not find any models.  Getting a new one!')
-        model = get_new_model(model_version,verbose=verbose)     
+        model = 0
+        # model = get_new_model(model_version,verbose=verbose)     
     return model
 
 
@@ -261,12 +262,12 @@ def runNN(train_df,valid_df,model_version,epochs_per_set,decay_rate):
 
     # track performance (dice coefficient loss) on train and validation datasets
     performance = History()
-    set_path=os.path.join(weights_dir,'set{0:03d}'.format(set_nb),'model.f{0:03d}.set{1:03d}.'.format(decay_rate,set_nb)+'{epoch:04d}.valJacIdx{val_jaccard_index:0.3f}.h5')
+    set_path=os.path.join(weights_dir,'set{0:03d}'.format(set_nb),'model.f{0:03d}.set{1:03d}.'.format(decay_rate,set_nb)+'{epoch:04d}.valJacIdx{val_jaccard_index_attn:0.3f}.h5')
     checkpointer=ModelCheckpoint(set_path, monitor='val_loss', verbose=0, save_best_only=False, mode='min', period=1)
 
     # fit the model using the data generator defined below
-    model.fit_generator(fileGenerator(train_df,nb_step=nb_step,verbose=False,input_size=input_size,output_size=output_size, decay_rate=decay_rate), steps_per_epoch=steps_per_epoch, epochs=epochs_per_set, verbose=1,
-            validation_data=fileGenerator(valid_df,nb_step=1,verbose=True,input_size=input_size,output_size=output_size, decay_rate=decay_rate),validation_steps=1,callbacks=[performance,checkpointer])
+    model.fit_generator(fileGenerator(train_df,valid=False,nb_step=nb_step,verbose=False,input_size=input_size,output_size=output_size, decay_rate=decay_rate), steps_per_epoch=steps_per_epoch, epochs=epochs_per_set, verbose=1,
+            validation_data=fileGenerator(valid_df,valid=True,nb_step=1,verbose=True,input_size=input_size,output_size=output_size, decay_rate=decay_rate),validation_steps=1,callbacks=[performance,checkpointer])
 
     # save the weights at the end of epochs
     model_FINAL_fn = os.path.join(weights_dir,'model.f{0:03d}.set{1:03d}.epochs{2:04d}.FINAL.h5'.format(decay_rate,set_nb,epochs_running+epochs_per_set))
@@ -276,7 +277,7 @@ def runNN(train_df,valid_df,model_version,epochs_per_set,decay_rate):
     save_epochs(weights_dir,epochs_per_set,set_nb,epochs_running)
 
 
-def fileGenerator(df,nb_step=1,verbose=True,input_size=(2560,2560,1),output_size=(2560,2560,2),decay_rate=50):
+def fileGenerator(df,valid=False,nb_step=1,verbose=True,input_size=(2560,2560,1),output_size=(2560,2560,2),decay_rate=50):
     X = np.zeros((nb_step,) + input_size )
     # (1,2560,2560,3)
     append_size = output_size[:2]+(output_size[2]+1,)
@@ -290,7 +291,7 @@ def fileGenerator(df,nb_step=1,verbose=True,input_size=(2560,2560,1),output_size
                 segment_fn = df['segment_fn'][i]
                 attention_fn = get_attention_fn(slice_fn,decay_rate=decay_rate)
                 if verbose:
-                    print("{} : {} : {}".format(slice_fn,segment_fn,attention_fn))
+                    print("{} : {} : {} : {}".format(append_size,slice_fn,segment_fn,attention_fn))
                 tile_width = input_size[0]
                 tiles,seg,attn = gen_tiles_random(slice_fn,segment_fn,attention_fn,nb_step,tile_width,verbose=verbose)
                 nb_slices = tiles.shape[0]
@@ -300,6 +301,7 @@ def fileGenerator(df,nb_step=1,verbose=True,input_size=(2560,2560,1),output_size
                 Y[:nb_slices,:,:,:2] = seg
                 if valid:
                     attn=np.zeros(attn.shape)+1
+                print(attn.shape)
                 Y[:nb_slices,:,:,2]=np.squeeze(attn)
                 n += nb_slices
             except Exception as e:
