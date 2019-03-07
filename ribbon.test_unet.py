@@ -306,7 +306,7 @@ def testNN(model_version,slice_fn,segment_fn,hull_fn,nb_tiles_in,verbose=False):
     tile_width=input_size[0]
 
     # directory to save files
-    save_dir=os.path.dirname('/home/rpizarro/histo/prediction/NN_arch/v{}/'.format(model_version))
+    save_dir=os.path.dirname('/home/rpizarro/histo/prediction/NN_arch/v{}/valid/'.format(model_version))
 
     weights_dir = os.path.dirname("/home/rpizarro/histo/weights/NN_arch/v{}/".format(model_version))
     model = get_model(weights_dir, verbose=True)
@@ -419,7 +419,7 @@ print("Executing:",__file__)
 print("Contents of the file during execution:\n",open(__file__,'r').read())
 
 csv_dir = '/home/rpizarro/histo/XValidFns/rm311_128slices'
-test_fn = os.path.join(csv_dir,'test.csv')
+test_fn = os.path.join(csv_dir,'valid.csv')
 test_df = pd.read_csv(test_fn)
 
 hull_data_path= '/home/rpizarro/histo/data/rm311_128requad_test_hull/'
