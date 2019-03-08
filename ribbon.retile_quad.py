@@ -79,7 +79,7 @@ def downsample_quadrants(q0,q1,q2,q3,ds):
 
 
 
-def requad(quad_four,file_end,downsample=downsample):
+def requad(quad_four,file_end,downsample=1):
 
     q0=nib.load(quad_four[0]).get_data()
     q1=nib.load(quad_four[1]).get_data()
@@ -185,6 +185,9 @@ for s in slices:
         downsample=4
     elif int(s)<30:
         downsample=2
+    else:
+        print(s)
+        downsample=1
     slices_fn = grab_files(data_path,'{}/*.jpg.nii'.format(s))
     segments_fn = grab_files(data_path,'{}/*segmented.nii*'.format(s))
     files = pair_slice_segment(slices_fn,segments_fn)
