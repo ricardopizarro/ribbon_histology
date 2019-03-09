@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -N ribbon
 #PBS -A ngt-630-aa
-#PBS -l walltime=3:00:00
+#PBS -l walltime=5:00:00
 #PBS -l nodes=1:gpus=1
 #PBS -l feature=k80
 #PBS -o $HOME/histo/weights/NN_arch/v103_drop2/out/$(USER)_$(JOBID)_$(JOBNAME).out
