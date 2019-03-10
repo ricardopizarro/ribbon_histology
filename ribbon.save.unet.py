@@ -586,6 +586,106 @@ def unet_109(input_shape, conv_size=(5,5),pool_size=(8,8), n_labels=1,
 
 
 
+def unet_109_drop(input_shape, conv_size=(5,5),pool_size=(8,8), n_labels=1,
+                  initial_learning_rate=0.00001, deconvolution=False):
+    """
+    Builds the 2D UNet Keras model.
+    :param input_shape: Shape of the input data (n_chanels, x_size, y_size, z_size). 
+    :param downsize_filters_factor: Factor to which to reduce the number of filters. Making this value larger will
+    reduce the amount of memory the model will need during training.
+    :param pool_size: Pool size for the max pooling operations.
+    :param n_labels: Number of binary labels that the model is learning.
+    :param initial_learning_rate: Initial learning rate for the model. This will be decayed during training.
+    :param deconvolution: If set to True, will use transpose convolution(deconvolution) instead of upsamping. This
+    increases the amount memory required during training.
+    :return: Untrained 2D UNet Model
+    """
+    inputs = Input(input_shape)
+    # drop0 = Dropout(rate=0.5)(inputs)
+    conv1 = Conv2D(10, conv_size, input_shape=input_shape, strides=pool_size, activation='relu',padding='same')(inputs)
+    conv2 = Conv2D(20, conv_size, strides=pool_size, activation='relu', padding='same')(conv1)
+
+    conv3a = Conv2D(40, conv_size, activation='relu', padding='same')(conv2)
+    drop3a = Dropout(0.5)(conv3a)
+    conv3b = Conv2D(40, conv_size, activation='relu', padding='same')(conv2)
+    drop3b = Dropout(0.5)(conv3b)
+    conv3c = Conv2D(40, conv_size, activation='relu', padding='same')(conv2)
+    drop3c = Dropout(0.5)(conv3c)
+    nadir = add([drop3a, drop3b, drop3c])
+
+    # up4 = UpSampling2D(size=pool_size)(conv3)
+    up4 = concatenate([nadir, conv2], axis=3)
+    conv4 = Conv2D(30, conv_size, activation='relu', padding='same')(up4)
+
+    up5 = UpSampling2D(size=pool_size)(conv4)
+    up5 = concatenate([up5, conv1], axis=3)
+    conv5 = Conv2D(20, conv_size, activation='relu', padding='same')(up5)
+
+    up6 = UpSampling2D(size=pool_size)(conv5)
+    up6 = concatenate([up6, inputs], axis=3)
+    conv6 = Conv2D(10, conv_size, activation='relu', padding='same')(up6)
+
+    conv8 = Conv2D(n_labels, (1, 1))(conv6)
+    act = Activation('softmax')(conv8)
+
+    model = Model(inputs=inputs, outputs=act)
+    print(model.summary())
+    model.compile(optimizer=Adam(lr=1e-5), loss='categorical_crossentropy', metrics=[dice_coef])
+
+    return model
+
+
+def unet_109_drop2(input_shape, conv_size=(5,5),pool_size=(8,8), n_labels=1,
+                  initial_learning_rate=0.00001, deconvolution=False):
+    """
+    Builds the 2D UNet Keras model.
+    :param input_shape: Shape of the input data (n_chanels, x_size, y_size, z_size). 
+    :param downsize_filters_factor: Factor to which to reduce the number of filters. Making this value larger will
+    reduce the amount of memory the model will need during training.
+    :param pool_size: Pool size for the max pooling operations.
+    :param n_labels: Number of binary labels that the model is learning.
+    :param initial_learning_rate: Initial learning rate for the model. This will be decayed during training.
+    :param deconvolution: If set to True, will use transpose convolution(deconvolution) instead of upsamping. This
+    increases the amount memory required during training.
+    :return: Untrained 2D UNet Model
+    """
+    inputs = Input(input_shape)
+    # drop0 = Dropout(rate=0.5)(inputs)
+    conv1 = Conv2D(10, conv_size, input_shape=input_shape, strides=pool_size, activation='relu',padding='same')(inputs)
+    conv2 = Conv2D(20, conv_size, strides=pool_size, activation='relu', padding='same')(conv1)
+
+    conv3a = Conv2D(40, conv_size, strides=pool_size, activation='relu', padding='same')(conv2)
+    drop3a = Dropout(0.5)(conv3a)
+    conv3b = Conv2D(40, conv_size, strides=pool_size, activation='relu', padding='same')(conv2)
+    drop3b = Dropout(0.5)(conv3b)
+    conv3c = Conv2D(40, conv_size, strides=pool_size, activation='relu', padding='same')(conv2)
+    drop3c = Dropout(0.5)(conv3c)
+    nadir = add([drop3a, drop3b, drop3c])
+
+    # up4 = UpSampling2D(size=pool_size)(conv3)
+    up4 = concatenate([nadir, conv2], axis=3)
+    conv4 = Conv2D(30, conv_size, activation='relu', padding='same')(up4)
+
+    up5 = UpSampling2D(size=pool_size)(conv4)
+    up5 = concatenate([up5, conv1], axis=3)
+    conv5 = Conv2D(20, conv_size, activation='relu', padding='same')(up5)
+
+    up6 = UpSampling2D(size=pool_size)(conv5)
+    up6 = concatenate([up6, inputs], axis=3)
+    conv6 = Conv2D(10, conv_size, activation='relu', padding='same')(up6)
+
+    conv8 = Conv2D(n_labels, (1, 1))(conv6)
+    act = Activation('softmax')(conv8)
+
+    model = Model(inputs=inputs, outputs=act)
+    print(model.summary())
+    model.compile(optimizer=Adam(lr=1e-5), loss='categorical_crossentropy', metrics=[dice_coef])
+
+    return model
+
+
+
+
 
 def dice_coef(y_true, y_pred, smooth=1.):
     y_true_f = K.flatten(y_true)
@@ -662,6 +762,22 @@ with open(fn, 'w') as outfile:
 model = unet_109(input_shape=input_shape, conv_size=(5,5),pool_size=(8,8), n_labels=2)
 json_string = model.to_json()
 fn = "../model/model.unet.v109.json"
+print('Writing to file, model : {}'.format(fn))
+with open(fn, 'w') as outfile:
+    json.dump(json_string, outfile)
+
+
+model = unet_109_drop(input_shape=input_shape, conv_size=(5,5),pool_size=(8,8), n_labels=2)
+json_string = model.to_json()
+fn = "../model/model.unet.v109_drop.json"
+print('Writing to file, model : {}'.format(fn))
+with open(fn, 'w') as outfile:
+    json.dump(json_string, outfile)
+
+
+model = unet_109_drop2(input_shape=input_shape, conv_size=(5,5),pool_size=(8,8), n_labels=2)
+json_string = model.to_json()
+fn = "../model/model.unet.v109_drop2.json"
 print('Writing to file, model : {}'.format(fn))
 with open(fn, 'w') as outfile:
     json.dump(json_string, outfile)
