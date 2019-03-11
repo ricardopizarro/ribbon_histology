@@ -662,8 +662,8 @@ def unet_109_drop2(input_shape, conv_size=(5,5),pool_size=(8,8), n_labels=1,
     drop3c = Dropout(0.5)(conv3c)
     nadir = add([drop3a, drop3b, drop3c])
 
-    # up4 = UpSampling2D(size=pool_size)(conv3)
-    up4 = concatenate([nadir, conv2], axis=3)
+    up4 = UpSampling2D(size=pool_size)(nadir)
+    up4 = concatenate([up4, conv2], axis=3)
     conv4 = Conv2D(30, conv_size, activation='relu', padding='same')(up4)
 
     up5 = UpSampling2D(size=pool_size)(conv4)
