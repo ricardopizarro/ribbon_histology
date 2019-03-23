@@ -119,7 +119,7 @@ def zero_pad(data,tile_width):
     return data_pad
 
 
-def gen_tiles(save_dir,img_fn,seg_fn,hull_fn,tile_width,slice_nb,nb_tiles):
+def gen_tiles(save_dir,set_nb,img_fn,seg_fn,hull_fn,tile_width,slice_nb,nb_tiles):
     data = nib.load(img_fn).get_data()
     white= int(stats.mode(data, axis=None)[0])
     seg_data = nib.load(segment_fn).get_data()
@@ -139,7 +139,7 @@ def gen_tiles(save_dir,img_fn,seg_fn,hull_fn,tile_width,slice_nb,nb_tiles):
     hull_data=np.squeeze(hull_data[:,:,1])
     data=segment(data,seg_data,hull_data,white)
     seg_data=consolidate_seg(seg_data)
-    fn='{0}_6x_concat_6x_whole.luminance.nii'.format(slice_nb)
+    fn='{0}_set{1:03d}_6x_concat_6x_whole.luminance.nii'.format(slice_nb,set_nb)
     save_to_nii(np.reshape(data,shape+(1,1,)),save_dir,fn)
     # prepare for input
     data=normalize(data)
@@ -268,9 +268,9 @@ def get_weight(path):
     else:
         return 0
 
-def get_model(path,verbose=False):
+def get_model(path,set_nb,verbose=False):
     print(path)
-    list_of_files = glob.glob(os.path.join(path,'model.*epochs5000.FINAL.h5'))
+    list_of_files = glob.glob(os.path.join(path,'model.*set{0:03d}*.FINAL.h5'.format(set_nb)))
     if list_of_files:
         # print(list_of_files)
         model_fn = max(list_of_files, key=os.path.getctime)
@@ -297,7 +297,7 @@ def get_input_output_size(model_version=101):
     return input_size,output_size
 
 
-def testNN(save_dir,model_version,slice_fn,segment_fn,hull_fn,nb_tiles_in,verbose=False):
+def testNN(model_version,set_nb,slice_nb,slice_fn,segment_fn,hull_fn,nb_tiles_in,verbose=False):
 
     input_size,output_size = get_input_output_size(model_version)
 
@@ -305,18 +305,20 @@ def testNN(save_dir,model_version,slice_fn,segment_fn,hull_fn,nb_tiles_in,verbos
     batch_size=32
     tile_width=input_size[0]
 
+    # directory to save files
+    save_dir=os.path.dirname('/home/rpizarro/histo/prediction/NN_arch/slice_{}/v{}/'.format(slice_nb,model_version))
 
     weights_dir = os.path.dirname("/home/rpizarro/histo/weights/NN_arch/v{}/".format(model_version))
-    model = get_model(weights_dir, verbose=True)
+    model = get_model(weights_dir, set_nb, verbose=True)
 
-    slice_nb=os.path.basename(slice_fn)[:4]
+    # slice_nb=os.path.basename(slice_fn)[:4]
     if verbose:
         print("{} : {}".format(slice_fn,segment_fn))
     # tiles_rgb are for viewing, tiles are normalized used for predicting
     # coord identifies the location of the tile,seg
     # slice_shape specifies the shape of the image
     nb_tiles=nb_tiles_in
-    tiles_norm,seg,coord,slice_shape=gen_tiles(save_dir,slice_fn,segment_fn,hull_fn,tile_width,slice_nb,nb_tiles)
+    tiles_norm,seg,coord,slice_shape=gen_tiles(save_dir,set_nb,slice_fn,segment_fn,hull_fn,tile_width,slice_nb,nb_tiles)
     nb_tiles=len(coord)
 
     seg=np.reshape(np_utils.to_categorical(seg,output_size[-1]),(nb_tiles,)+output_size)
@@ -354,27 +356,27 @@ def testNN(save_dir,model_version,slice_fn,segment_fn,hull_fn,nb_tiles_in,verbos
     print('{} : {}'.format(slice_nb,nb_tiles))
 
     df_jac = pd.DataFrame(jac_idx_val,columns=['jac_idx_val'])
-    fn='{0}.jaccard_index.{1:04d}.csv'.format(slice_nb,nb_tiles)
+    fn='{0}_set{1:03d}.jaccard_index.{2:04d}.csv'.format(slice_nb,set_nb,nb_tiles)
     df_jac.to_csv(os.path.join(save_dir,fn))
 
     Y_pred_slice=retile(np.expand_dims(y_pred_tiles[:,:,:,0],axis=3),coord,slice_shape,tile_width)
     Y_pred_slice=np.around(Y_pred_slice)
-    fn='{0}.prediction.000.{1:04d}tiled.nii'.format(slice_nb,nb_tiles)
+    fn='{0}_set{1:03d}.prediction.000.{2:04d}tiled.nii'.format(slice_nb,set_nb,nb_tiles)
     save_to_nii(Y_pred_slice,save_dir,fn)
 
     Y_prob_slice=retile(np.expand_dims(y_prob_tiles[:,:,:,1],axis=3),coord,slice_shape,tile_width)
     Y_prob_slice=100*Y_prob_slice
-    fn='{0}.probability.001.{1:04d}tiled.nii'.format(slice_nb,nb_tiles)
+    fn='{0}_set{1:03d}.probability.001.{2:04d}tiled.nii'.format(slice_nb,set_nb,nb_tiles)
     save_to_nii(Y_prob_slice,save_dir,fn)
 
     Y_pred_slice=retile(np.expand_dims(y_pred_tiles[:,:,:,1],axis=3),coord,slice_shape,tile_width)
     Y_pred_slice=np.around(Y_pred_slice)
-    fn='{0}.prediction.001.{1:04d}tiled.nii'.format(slice_nb,nb_tiles)
+    fn='{0}_set{1:03d}.prediction.001.{2:04d}tiled.nii'.format(slice_nb,set_nb,nb_tiles)
     save_to_nii(Y_pred_slice,save_dir,fn)
 
     Y_true_slice=retile(np.expand_dims(y_true_tiles[:,:,:,1],axis=3),coord,slice_shape,tile_width)
     Y_true_slice=np.around(Y_true_slice)
-    fn='{0}.truesegment.{1:04d}tiled.nii'.format(slice_nb,nb_tiles)
+    fn='{0}_set{1:03d}.truesegment.{2:04d}tiled.nii'.format(slice_nb,set_nb,nb_tiles)
     save_to_nii(Y_true_slice,save_dir,fn)
 
     data12_slice = Y_true_slice+2*Y_pred_slice
@@ -386,67 +388,48 @@ def testNN(save_dir,model_version,slice_fn,segment_fn,hull_fn,nb_tiles_in,verbos
     plt.title("Jaccard Index Distribution")
     plt.xlabel("Jaccard Index")
     plt.ylabel("Frequency")
-    fn='{0}.jac_idx_distribution.{1:04d}tiled.jac_idx{2:0.3f}.png'.format(slice_nb,nb_tiles,np.mean(jac_idx_val))
+    fn='{0}_set{1:03d}.jac_idx_distribution.{2:04d}tiled.jac_idx{3:0.3f}.png'.format(slice_nb,set_nb,nb_tiles,np.mean(jac_idx_val))
     plt.savefig(os.path.join(save_dir,fn))
     plt.close()
 
     Y_out_slice=Y_true_slice+3*Y_pred_slice
-    fn='{0}.segmented.{1:04d}tiled.jac_idx{2:0.3f}.nii'.format(slice_nb,nb_tiles,np.mean(jac_idx_val))
+    fn='{0}_set{1:03d}.segmented.{2:04d}tiled.jac_idx{3:0.3f}.nii'.format(slice_nb,set_nb,nb_tiles,np.mean(jac_idx_val))
     save_to_nii(Y_out_slice,save_dir,fn)
 
 
 
 def grab_files(path,end):
-    return glob.glob(os.path.join(path,end))
-
-def get_hull_fn(hull_fn_paths,slice_fn):
-    slice_nb = os.path.basename(slice_fn)[:4]
-    hull_fn_bases = [os.path.basename(f) for f in hull_fn_paths]
-    hull_fn = difflib.get_close_matches(os.path.basename(slice_fn),hull_fn_bases)[0]
-    if slice_nb in hull_fn:
-        return os.path.join(os.path.dirname(hull_fn_paths[0]),hull_fn)
+    matches = glob.glob(os.path.join(path,end))
+    if len(matches) > 1:
+        print('we found too many matches')
+        return ''
     else:
-        print('No file matching : {}'.format(slice_fn))
-        return False
+        return matches[0]
 
 
-def already_tested(save_dir,slice_fn):
-    slice_nb = os.path.basename(slice_fn)[:4]
-    matches = grab_files(save_dir,'{0}.segmented.*tiled.jac_idx*.nii.gz')
-    if matches:
-        return True
-    else:
-        return False
 
-
-# input to : python ribbon.test_unet.py 107(_drop) 120
+# input to : python ribbon.test_unet.py 103(_drop) 302 120
 model_version = sys.argv[1]
-nb_tiles = int(sys.argv[2])
+slice_nb = '{0:04d}'.format(int(sys.argv[2]))
+nb_tiles = int(sys.argv[3])
 
 # Book keeping
 print("Executing:",__file__)
 print("Contents of the file during execution:\n",open(__file__,'r').read())
 
-csv_dir = '/home/rpizarro/histo/XValidFns/rm311_128slices'
-test_fn = os.path.join(csv_dir,'valid.csv')
-test_df = pd.read_csv(test_fn)
+root_path= '/home/rpizarro/histo/data/'
+data_path= os.path.join(root_path,'rm311_128requad')
+slice_fn = grab_files(data_path,'{}*.slice.nii.gz'.format(slice_nb))
+segment_fn = grab_files(data_path,'{}*.segmented.nii.gz'.format(slice_nb))
 
-hull_data_path= '/home/rpizarro/histo/data/rm311_128requad_test_hull/'
-hull_fns = grab_files(hull_data_path,"*.single_hull.nii.gz")
+hull_path= os.path.join(root_path,'rm311_128requad_test_hull')
+hull_fn = grab_files(hull_path,'{}*.single_hull.nii.gz'.format(slice_nb))
 
-# directory to save files
-save_dir=os.path.dirname('/home/rpizarro/histo/prediction/NN_arch/valid_5000epochs/v{}/'.format(model_version))
-
-print('\n==Testing NN UNET ==\n')
-for index,row in test_df.iterrows():
-    slice_fn = row['slice_fn']
-    segment_fn = row['segment_fn']
-    if already_tested(save_dir,slice_fn):
-        continue
-    hull_fn = get_hull_fn(hull_fns,slice_fn)
-    if hull_fn:
-        print('{} : {} : {}'.format(slice_fn,segment_fn,hull_fn))
-        testNN(model_version,slice_fn,segment_fn,hull_fn,nb_tiles,verbose=True)
+print('\n==Testing NN UNET across slice {}==\n'.format(slice_nb))
+for set_nb in range(40,101,20):
+    print('This is set : {}',format(set_nb))
+    print('{} : {} : {}'.format(slice_fn,segment_fn,hull_fn))
+    testNN(model_version,set_nb,slice_nb,slice_fn,segment_fn,hull_fn,nb_tiles,verbose=True)
 
 
 
