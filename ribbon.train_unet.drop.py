@@ -215,7 +215,7 @@ def get_new_model(model_version,verbose=False):
     return model
 
 def get_model(path,model_version,verbose=False):
-    list_of_files = glob.glob(os.path.join(path,'model*FINAL.h5'))
+    list_of_files = glob.glob(os.path.join(path,'model.*FINAL.h5'))
     if list_of_files:
         # print(list_of_files)
         model_fn = max(list_of_files, key=os.path.getctime)

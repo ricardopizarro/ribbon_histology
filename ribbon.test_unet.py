@@ -412,8 +412,10 @@ def get_hull_fn(hull_fn_paths,slice_fn):
 
 def already_tested(save_dir,slice_fn):
     slice_nb = os.path.basename(slice_fn)[:4]
-    matches = grab_files(save_dir,'{0}.segmented.*tiled.jac_idx*.nii.gz')
+    matches = grab_files(save_dir,'{0}.segmented.*tiled.jac_idx*.nii.gz'.format(slice_nb))
     if matches:
+        print('{}'.format(matches))
+        print('These files have been tested ... moving on to next slice')
         return True
     else:
         return False
@@ -446,7 +448,7 @@ for index,row in test_df.iterrows():
     hull_fn = get_hull_fn(hull_fns,slice_fn)
     if hull_fn:
         print('{} : {} : {}'.format(slice_fn,segment_fn,hull_fn))
-        testNN(model_version,slice_fn,segment_fn,hull_fn,nb_tiles,verbose=True)
+        testNN(save_dir,model_version,slice_fn,segment_fn,hull_fn,nb_tiles,verbose=True)
 
 
 
