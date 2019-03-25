@@ -204,8 +204,8 @@ def get_set_nb(path,epochs_per_set):
 
 
 
-def get_new_model(model_weights,model_version,verbose=False):
-    m0 = load_model(model_weights)
+def get_new_model(model_weights_fn,model_version,verbose=False):
+    m0 = load_model(model_weights_fn)
     w0 = m0.get_weights()
     # dimension 2560x2560
     fn = "/home/rpizarro/histo/model/model.unet.v{}.json".format(model_version)
@@ -213,7 +213,9 @@ def get_new_model(model_weights,model_version,verbose=False):
     with open(fn) as json_data:
         d = json.load(json_data)
     model = model_from_json(d)
-    model.compile(optimizer=Adam(lr=1e-5), loss=weighted_categorical_crossentropy_fcn_loss, metrics=[jaccard_index])
+    model.compile(optimizer=Adam(lr=1e-5), loss=weighted_categorical_crossentropy_fcn_loss, sample_weight_mode="temporal", metrics=[jaccard_index])
+    model._feed_output_shapes = [(None, 2560, 2560, 3)]
+    print('Loading mdoel weights from : {}'.format(model_weights_fn))
     model.set_weights(w0)
     if verbose:
         print(model.summary())
@@ -265,12 +267,12 @@ def runNN(train_df,valid_df,model_version,epochs_per_set,decay_rate):
 
     # track performance (dice coefficient loss) on train and validation datasets
     performance = History()
-    set_path=os.path.join(weights_dir,'set{0:03d}'.format(set_nb),'model.f{0:03d}.set{1:03d}.'.format(decay_rate,set_nb)+'{epoch:04d}.valJacIdx{val_jaccard_index_attn:0.3f}.h5')
+    set_path=os.path.join(weights_dir,'set{0:03d}'.format(set_nb),'model.f{0:03d}.set{1:03d}.'.format(decay_rate,set_nb)+'{epoch:04d}.valJacIdx{val_jaccard_index:0.3f}.h5')
     checkpointer=ModelCheckpoint(set_path, monitor='val_loss', verbose=0, save_best_only=False, mode='min', period=1)
 
     # fit the model using the data generator defined below
     model.fit_generator(fileGenerator(train_df,valid=False,nb_step=nb_step,verbose=False,input_size=input_size,output_size=output_size, decay_rate=decay_rate), steps_per_epoch=steps_per_epoch, epochs=epochs_per_set, verbose=1,
-            validation_data=fileGenerator(valid_df,valid=True,nb_step=1,verbose=True,input_size=input_size,output_size=output_size, decay_rate=decay_rate),validation_steps=1,callbacks=[performance,checkpointer])
+            validation_data=fileGenerator(valid_df,valid=True,nb_step=1,verbose=False,input_size=input_size,output_size=output_size, decay_rate=decay_rate),validation_steps=1,callbacks=[performance,checkpointer])
 
     # save the weights at the end of epochs
     model_FINAL_fn = os.path.join(weights_dir,'model.f{0:03d}.set{1:03d}.epochs{2:04d}.FINAL.h5'.format(decay_rate,set_nb,epochs_running+epochs_per_set))
@@ -280,7 +282,56 @@ def runNN(train_df,valid_df,model_version,epochs_per_set,decay_rate):
     save_epochs(weights_dir,epochs_per_set,set_nb,epochs_running)
 
 
+
 def fileGenerator(df,valid=False,nb_step=1,verbose=True,input_size=(2560,2560,1),output_size=(2560,2560,2),decay_rate=50):
+    append_size=(2560,2560,3)
+    X = np.zeros((nb_step,) + input_size )
+    # (1,2560,2560,3)
+    Y = np.zeros((nb_step,) + append_size )
+    n = 0
+    while True:
+        while n < nb_step:
+            try:
+                i = np.random.randint(0,df.shape[0])
+                slice_fn = df['slice_fn'][i]
+                segment_fn = df['segment_fn'][i]
+                attention_fn = get_attention_fn(slice_fn,decay_rate=decay_rate)
+                if verbose:
+                    print("{} : {} : {} : {}".format(append_size,slice_fn,segment_fn,attention_fn))
+                tile_width = input_size[0]
+                tiles,seg,att = gen_tiles_random(slice_fn,segment_fn,attention_fn,nb_step,tile_width)
+                nb_slices = tiles.shape[0]
+                seg = np.reshape(np_utils.to_categorical(seg,output_size[-1]),output_size)
+                seg = seg.reshape((nb_slices,)+output_size)
+                X[:nb_slices] = tiles
+                Y[:nb_slices,:,:,:2] = seg
+                if valid:
+                    att = np.zeros(att.shape)+1
+                Y[:nb_slices,:,:,2] = np.squeeze(att)
+                # Z[:nb_slices,:,:,1]=att
+                n+=nb_slices
+            except Exception as e:
+                print(str(e))
+                pass
+        if X.size:
+            yield X,Y
+            # if valid:
+                # self.attention=V
+                # yield (X,Y)#{'input_1':X},{'activation_1':Y,'attention':V})
+                # yield ({'input_1':X},{'activation_1':Y,'attention':V})
+            # else:
+                # self.attention=Z
+                # yield (X,Y) # {'input_1':X},{'activation_1':Y,'attention':Z})
+            # yield X,Y,Z
+        else:
+            print("X is empty!!!")
+            continue
+
+
+
+
+
+def fileGenerator_old(df,valid=False,nb_step=1,verbose=True,input_size=(2560,2560,1),output_size=(2560,2560,2),decay_rate=50):
     X = np.zeros((nb_step,) + input_size )
     # (1,2560,2560,3)
     append_size = output_size[:2]+(output_size[2]+1,)

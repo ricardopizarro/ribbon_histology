@@ -146,7 +146,8 @@ def gen_tiles_random(img_fn,segment_fn,nb_tiles=1,tile_width=2560,verbose=False,
 
         seg_tile=np.squeeze(seg_data[x:x+tile_width,y:y+tile_width])
         tile=data[x:x+tile_width,y:y+tile_width]
-        tile=dropout(tile,drop_rate)
+        if drop_rate > 0.0:
+            tile=dropout(tile,drop_rate)
 
         tile,seg_tile=flip_img(tile,seg_tile)
 
