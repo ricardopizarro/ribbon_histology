@@ -158,7 +158,7 @@ def weighted_categorical_crossentropy_fcn_loss(y_true, y_pred):
     return K.mean( cce * y_true[...,2] )
 
 
-def jaccard_index_attn(y_true, y_pred, smooth=1.):
+def jaccard_index(y_true, y_pred, smooth=1.):
     # We've modified jaccard since we have weighted_categorical_crossentropy_fcn_loss
     y_true_f = K.flatten(y_true[...,:2])
     y_pred_f = K.flatten(y_pred[...,:2])
@@ -204,32 +204,35 @@ def get_set_nb(path,epochs_per_set):
 
 
 
-def get_new_model(model_version,verbose=False):
+def get_new_model(model_weights,model_version,verbose=False):
+    m0 = load_model(model_weights)
+    w0 = m0.get_weights()
     # dimension 2560x2560
     fn = "/home/rpizarro/histo/model/model.unet.v{}.json".format(model_version)
     print('Loading model with architecture from : {}'.format(fn))
     with open(fn) as json_data:
         d = json.load(json_data)
     model = model_from_json(d)
-    model.compile(optimizer=Adam(lr=1e-5), loss='categorical_crossentropy', metrics=[jaccard_index])
+    model.compile(optimizer=Adam(lr=1e-5), loss=weighted_categorical_crossentropy_fcn_loss, metrics=[jaccard_index])
+    model.set_weights(w0)
     if verbose:
         print(model.summary())
     return model
 
 def get_model(path,model_version,verbose=False):
     list_of_files = glob.glob(os.path.join(path,'model*FINAL.h5'))
-    if list_of_files:
+    if len(list_of_files) > 1:
         # print(list_of_files)
         model_fn = max(list_of_files, key=os.path.getctime)
         print('Loading model : {}'.format(model_fn))
         model = load_model(model_fn)
-        model.compile(optimizer=Adam(lr=1e-5), loss=weighted_categorical_crossentropy_fcn_loss, metrics=[jaccard_index_attn])
+        # model.compile(optimizer=Adam(lr=1e-5), loss=weighted_categorical_crossentropy_fcn_loss, metrics=[jaccard_index_attn])
         if verbose:
             print(model.summary())
     else:
         print('We did not find any models.  Getting a new one!')
-        model = 0
-        # model = get_new_model(model_version,verbose=verbose)     
+        # model = 0
+        model = get_new_model(list_of_files[0],model_version,verbose=verbose)     
     return model
 
 
