@@ -139,7 +139,7 @@ def gen_tiles(save_dir,epoch,img_fn,seg_fn,hull_fn,tile_width,slice_nb,nb_tiles)
     hull_data=np.squeeze(hull_data[:,:,1])
     data=segment(data,seg_data,hull_data,white)
     seg_data=consolidate_seg(seg_data)
-    fn='{0}_set000_{1:04d}.6x_concat_6x_whole.luminance.nii'.format(slice_nb,epoch)
+    fn='{0}_6x_concat_6x_whole.luminance.nii'.format(slice_nb)
     save_to_nii(np.reshape(data,shape+(1,1,)),save_dir,fn)
     # prepare for input
     data=normalize(data)
@@ -226,6 +226,11 @@ def calc_jac_idx(data,str_arg='None'):
     # fp = false positive, means jeeda marked it as gray matter and deepthi marked as not gray matter
     # tp = true positive,  means the two raters agree it is gray matter
     ii_str=['tn','fn','fp','tp']
+    if len(y) < 4:
+        print('length of y : {}'.format(len(y)))
+        yl = list(y)
+        yl += [0]*(4-len(yl))
+        y = tuple(yl)
     tn,fn,fp,tp = y
     print(zip(ii_str,y[ii]))
     return 1.0*tp/(tp+fp+fn)
@@ -306,7 +311,7 @@ def testNN(model_version,epoch,slice_nb,slice_fn,segment_fn,hull_fn,nb_tiles_in,
     tile_width=input_size[0]
 
     # directory to save files
-    save_dir=os.path.dirname('/home/rpizarro/histo/prediction/NN_arch/slice_{}/v{}/'.format(slice_nb,model_version))
+    save_dir=os.path.dirname('/home/rpizarro/histo/prediction/NN_arch/s{}_longit/'.format(slice_nb,model_version))
 
     weights_dir = os.path.dirname("/home/rpizarro/histo/weights/NN_arch/v{}/set000/".format(model_version))
     model = get_model(weights_dir, epoch, verbose=True)
@@ -376,21 +381,12 @@ def testNN(model_version,epoch,slice_nb,slice_fn,segment_fn,hull_fn,nb_tiles_in,
 
     Y_true_slice=retile(np.expand_dims(y_true_tiles[:,:,:,1],axis=3),coord,slice_shape,tile_width)
     Y_true_slice=np.around(Y_true_slice)
-    fn='{0}_set000_{1:04d}.truesegment.{2:04d}tiled.nii'.format(slice_nb,epoch,nb_tiles)
+    fn='{0}_truesegment.{1:04d}tiled.nii'.format(slice_nb,nb_tiles)
     save_to_nii(Y_true_slice,save_dir,fn)
 
     data12_slice = Y_true_slice+2*Y_pred_slice
     jac_idx_slice = calc_jac_idx(data12_slice.flatten(),'Jacard index for true segmentation and predicion')
     print('Jaccard index ( avg tiles | slice ) : ( {0:0.3f} | {1:0.3f} )'.format(np.mean(jac_idx_val),jac_idx_slice))
-
-    bins = np.linspace(0, 1, nb_tiles/2)
-    plt.hist(jac_idx_val,bins)
-    plt.title("Jaccard Index Distribution")
-    plt.xlabel("Jaccard Index")
-    plt.ylabel("Frequency")
-    fn='{0}_set000_{1:04d}.jac_idx_distribution.{2:04d}tiled.jac_idx{3:0.3f}.png'.format(slice_nb,epoch,nb_tiles,np.mean(jac_idx_val))
-    plt.savefig(os.path.join(save_dir,fn))
-    plt.close()
 
     Y_out_slice=Y_true_slice+3*Y_pred_slice
     fn='{0}_set000_{1:04d}.segmented.{2:04d}tiled.jac_idx{3:0.3f}.nii'.format(slice_nb,epoch,nb_tiles,np.mean(jac_idx_val))
@@ -408,7 +404,7 @@ def grab_files(path,end):
 
 
 
-# input to : python ribbon.test_unet.py 103(_drop) 302 120
+# input to : python ribbon.test_unet.py 103(_drop) 0096 120
 model_version = sys.argv[1]
 slice_nb = '{0:04d}'.format(int(sys.argv[2]))
 nb_tiles = int(sys.argv[3])
@@ -426,7 +422,7 @@ hull_path= os.path.join(root_path,'rm311_128requad_test_hull')
 hull_fn = grab_files(hull_path,'{}*.single_hull.nii.gz'.format(slice_nb))
 
 print('\n==Testing NN UNET across slice {}==\n'.format(slice_nb))
-for ep in [1]+list(range(10,101,10)):
+for ep in list(range(0,10))+list(range(10,101,10)):
     print('This is epoch : {}',format(ep))
     print('{} : {} : {}'.format(slice_fn,segment_fn,hull_fn))
     testNN(model_version,ep,slice_nb,slice_fn,segment_fn,hull_fn,nb_tiles,verbose=True)

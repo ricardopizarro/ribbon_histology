@@ -270,7 +270,7 @@ def get_weight(path):
 
 def get_model(path,verbose=False):
     print(path)
-    list_of_files = glob.glob(os.path.join(path,'model.*epochs5000.FINAL.h5'))
+    list_of_files = glob.glob(os.path.join(path,'model.*epochs10000.FINAL.h5'))
     if list_of_files:
         # print(list_of_files)
         model_fn = max(list_of_files, key=os.path.getctime)
@@ -381,15 +381,6 @@ def testNN(save_dir,model_version,slice_fn,segment_fn,hull_fn,nb_tiles_in,verbos
     jac_idx_slice = calc_jac_idx(data12_slice.flatten(),'Jacard index for true segmentation and predicion')
     print('Jaccard index ( avg tiles | slice ) : ( {0:0.3f} | {1:0.3f} )'.format(np.mean(jac_idx_val),jac_idx_slice))
 
-    bins = np.linspace(0, 1, nb_tiles/2)
-    plt.hist(jac_idx_val,bins)
-    plt.title("Jaccard Index Distribution")
-    plt.xlabel("Jaccard Index")
-    plt.ylabel("Frequency")
-    fn='{0}.jac_idx_distribution.{1:04d}tiled.jac_idx{2:0.3f}.png'.format(slice_nb,nb_tiles,np.mean(jac_idx_val))
-    plt.savefig(os.path.join(save_dir,fn))
-    plt.close()
-
     Y_out_slice=Y_true_slice+3*Y_pred_slice
     fn='{0}.segmented.{1:04d}tiled.jac_idx{2:0.3f}.nii'.format(slice_nb,nb_tiles,np.mean(jac_idx_val))
     save_to_nii(Y_out_slice,save_dir,fn)
@@ -437,7 +428,7 @@ hull_data_path= '/home/rpizarro/histo/data/rm311_128requad_test_hull/'
 hull_fns = grab_files(hull_data_path,"*.single_hull.nii.gz")
 
 # directory to save files
-save_dir=os.path.dirname('/home/rpizarro/histo/prediction/NN_arch/valid_5000epochs/v{}/'.format(model_version))
+save_dir=os.path.dirname('/home/rpizarro/histo/prediction/NN_arch/valid_10000epochs/v{}/'.format(model_version))
 
 print('\n==Testing NN UNET ==\n')
 for index,row in test_df.iterrows():

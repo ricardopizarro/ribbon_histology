@@ -227,7 +227,8 @@ def get_model(path,model_version,verbose=False):
         # print(list_of_files)
         model_fn = max(list_of_files, key=os.path.getctime)
         print('Loading model : {}'.format(model_fn))
-        model = load_model(model_fn)
+        model = get_new_model(model_fn,model_version,verbose=verbose)
+        # model._feed_output_shapes = [(None, 2560, 2560, 3)]
         # model.compile(optimizer=Adam(lr=1e-5), loss=weighted_categorical_crossentropy_fcn_loss, metrics=[jaccard_index_attn])
         if verbose:
             print(model.summary())
