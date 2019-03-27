@@ -232,7 +232,7 @@ def calc_jac_idx(data,str_arg='None'):
         yl += [0]*(4-len(yl))
         y = tuple(yl)
     tn,fn,fp,tp = y
-    print(zip(ii_str,y[ii]))
+    # print(zip(ii_str,y[ii]))
     return 1.0*tp/(tp+fp+fn)
 
 def calc_dc(data,str_arg='None'):
