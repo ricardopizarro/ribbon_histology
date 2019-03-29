@@ -4,8 +4,8 @@
 #PBS -l walltime=6:00:00
 #PBS -l nodes=1:gpus=1
 #PBS -l feature=k80
-#PBS -o $HOME/histo/prediction/NN_arch/valid_5000epochs/v103_drop2/out/$(USER)_$(JOBID)_$(JOBNAME).out
-#PBS -e $HOME/histo/prediction/NN_arch/valid_5000epochs/v103_drop2/out/rpizarro_${MOAB_JOBID}_ribbon.err
+#PBS -o $HOME/histo/prediction/NN_arch/valid_10000epochs/v103_drop2/out/$(USER)_$(JOBID)_$(JOBNAME).out
+#PBS -e $HOME/histo/prediction/NN_arch/valid_10000epochs/v103_drop2/out/rpizarro_${MOAB_JOBID}_ribbon.err
 
 source /home/rpizarro/.deep_env
 
