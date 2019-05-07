@@ -421,14 +421,14 @@ print("Executing:",__file__)
 print("Contents of the file during execution:\n",open(__file__,'r').read())
 
 csv_dir = '/home/rpizarro/histo/XValidFns/rm311_128slices'
-test_fn = os.path.join(csv_dir,'test.csv')
+test_fn = os.path.join(csv_dir,'valid.csv')
 test_df = pd.read_csv(test_fn)
 
 hull_data_path= '/home/rpizarro/histo/data/rm311_128requad_test_hull/'
 hull_fns = grab_files(hull_data_path,"*.single_hull.nii.gz")
 
 # directory to save files
-save_dir=os.path.dirname('/home/rpizarro/histo/prediction/NN_arch/test_10000epochs/v{}/'.format(model_version))
+save_dir=os.path.dirname('/home/rpizarro/histo/prediction/NN_arch/valid_10000epochs/v{}/'.format(model_version))
 
 print('\n==Testing NN UNET ==\n')
 for index,row in test_df.iterrows():

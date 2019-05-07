@@ -422,7 +422,7 @@ hull_path= os.path.join(root_path,'rm311_128requad_test_hull')
 hull_fn = grab_files(hull_path,'{}*.single_hull.nii.gz'.format(slice_nb))
 
 print('\n==Testing NN UNET across slice {}==\n'.format(slice_nb))
-for ep in list(range(50,101,10)):
+for ep in list(range(60,101,10)):
     print('This is epoch : {}',format(ep))
     print('{} : {} : {}'.format(slice_fn,segment_fn,hull_fn))
     testNN(model_version,ep,slice_nb,slice_fn,segment_fn,hull_fn,nb_tiles,verbose=True)
