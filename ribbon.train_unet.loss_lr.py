@@ -159,11 +159,11 @@ def save_epochs(path,epochs_per_set,set_nb,epochs_running):
     with open(fn, open_as) as outfile:
         outfile.write('{}\n'.format(epochs_running+epochs_per_set))
 
-def save_history(path,performance,set_nb):
+def save_history(path,performance,set_nb,epoch):
     # track performance (accuracy and loss) for training and validation sets
     # after each epoch completes and save as .json string
     json_string=json.dumps(performance.history)
-    fn=os.path.join(path,'history.set{0:03d}.performance.json'.format(set_nb))
+    fn=os.path.join(path,'set{0:03d}'.format(set_nb),'history.set{0:03d}.{1:04d}.performance.json'.format(set_nb,epoch))
     with open(fn, 'a') as outfile:
         json.dump(json_string, outfile)
 
@@ -229,7 +229,7 @@ def get_input_output_size(model_version=101):
     return input_size,output_size
 
 
-def get_lr(ep,nb_epochs=500):
+def get_lr(ep,nb_epochs=150):
     lr = np.logspace(-12, 0, nb_epochs)
     return lr[ep]
 
@@ -241,7 +241,8 @@ def runNN(train_df,valid_df,model_version,epochs_per_set):
     # number of tiles per step
     nb_step=1 #20
     # epochs_per_set=10
-    steps_per_epoch=50
+    # for each epoch the NN sees the equivalent number in the training dataset ... 98
+    steps_per_epoch=train_df.shape(0)
 
     weights_dir = os.path.dirname("/home/rpizarro/histo/weights/lr/v{1}/".format(epochs_per_set,model_version))
     set_nb,epochs_running=get_set_nb(weights_dir,epochs_per_set)
@@ -249,10 +250,11 @@ def runNN(train_df,valid_df,model_version,epochs_per_set):
 
     model = get_model(weights_dir,model_version,verbose=True)
 
-    # track performance (dice coefficient loss) on train and validation datasets
-    performance = History()
 
     for ep in range(epochs_per_set):
+        # track performance (dice coefficient loss) on train and validation datasets
+        performance = History()
+
         set_path=os.path.join(weights_dir,'set{0:03d}'.format(set_nb),'model.v{0}.set{1:03d}.{2:04d}.'.format(model_version,set_nb,ep)+'valJacIdx{val_jaccard_index:0.3f}.h5')
         checkpointer=ModelCheckpoint(set_path, monitor='val_loss', verbose=0, save_best_only=False, mode='min', period=1)
         # manually set the learning rate
@@ -261,12 +263,12 @@ def runNN(train_df,valid_df,model_version,epochs_per_set):
         # fit the model using the data generator defined below
         model.fit_generator(fileGenerator(train_df,nb_step=nb_step,verbose=False,input_size=input_size,output_size=output_size), steps_per_epoch=steps_per_epoch, epochs=1, verbose=1,
                 validation_data=fileGenerator(valid_df,nb_step=1,verbose=True,input_size=input_size,output_size=output_size),validation_steps=1,callbacks=[performance,checkpointer])
+        # save the performance (accuracy and loss) history
+        save_history(weights_dir,performance,set_nb,ep)
 
     # save the weights at the end of epochs
     model_FINAL_fn = os.path.join(weights_dir,'model.v{0}.set{1:03d}.epochs{2:04d}.FINAL.h5'.format(model_version,set_nb,epochs_running+epochs_per_set))
     model.save(model_FINAL_fn,overwrite=True)
-    # save the performance (accuracy and loss) history
-    save_history(weights_dir,performance,set_nb)
     save_epochs(weights_dir,epochs_per_set,set_nb,epochs_running)
 
 
